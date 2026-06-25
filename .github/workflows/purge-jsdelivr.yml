@@ -2,21 +2,22 @@ name: Purge jsDelivr Cache
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - "js/**"
       - "css/**"
-      - "*.html"
-  workflow_dispatch:
-    inputs:
-      purge_all:
-        description: "Purge all JS/CSS/HTML files (full cache reset)"
-        required: false
-        default: "true"
+      - "**.html"
+  workflow_dispatch: {} # manual run = purge every JS/CSS/HTML file
+
+# Don't let rapid pushes run overlapping purges against the same ref.
+concurrency:
+  group: purge-jsdelivr-${{ github.ref }}
+  cancel-in-progress: false
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  # Opt JS-based actions (e.g. checkout) into Node 24 ahead of GitHub's
+  # June 2026 migration. Purely optional — has no effect on the bash steps.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   purge:
@@ -24,32 +25,55 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          # Full history so we can diff against the commit the push started from,
+          # even when a push contains multiple commits.
+          fetch-depth: 0
 
-      - name: Get files to purge
+      - name: Determine changed files
         id: changed
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            files=$(find js css -type f \( -name "*.js" -o -name "*.css" \) && find . -maxdepth 1 -name "*.html" | sed 's|^\./||')
+          empty_tree="$(git hash-object -t tree /dev/null)"
+          after="${{ github.sha }}"
+          before="${{ github.event.before }}"
+
+          # Compare against the empty tree (i.e. purge everything) on a manual run,
+          # the first push to the branch, or whenever the previous commit isn't
+          # reachable (e.g. a force-push). Otherwise diff against the push base.
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+             || [ -z "$before" ] \
+             || ! git cat-file -e "${before}^{commit}" 2>/dev/null; then
+            base="$empty_tree"
           else
-            files=$(git diff --name-only HEAD~1 HEAD -- 'js/**' 'css/**' '*.html')
+            base="$before"
           fi
-          echo "files<<EOF" >> $GITHUB_OUTPUT
-          echo "$files" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+
+          # --diff-filter=d drops deleted files (no point purging what's gone).
+          files="$(git diff --name-only --diff-filter=d "$base" "$after" \
+                   | grep -E '\.(js|css|html)$' || true)"
+
+          {
+            echo "files<<EOF"
+            echo "$files"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Purge jsDelivr cache
         if: steps.changed.outputs.files != ''
         env:
-          CHANGED_FILES: ${{ steps.changed.outputs.files }}
+          FILES: ${{ steps.changed.outputs.files }}
+          REPO: ${{ github.repository }}
+          BRANCH: main
         run: |
-          REPO="dev-forwwward/fwd-studio-website"
-          BRANCH="main"
-
+          failed=0
           while IFS= read -r file; do
-            [[ -z "$file" ]] && continue
+            [ -z "$file" ] && continue
             url="https://purge.jsdelivr.net/gh/${REPO}@${BRANCH}/${file}"
-            echo -n "Purging ${file} ... "
-            curl -s "$url"
-            echo ""
-          done <<< "$CHANGED_FILES"
+            printf 'Purging %s ... ' "$file"
+            if curl -fsS "$url" >/dev/null; then
+              echo "OK"
+            else
+              echo "FAILED"
+              failed=1
+            fi
+          done <<< "$FILES"
+          exit "$failed"
