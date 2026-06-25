@@ -1,0 +1,55 @@
+name: Purge jsDelivr Cache
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "js/**"
+      - "css/**"
+      - "*.html"
+  workflow_dispatch:
+    inputs:
+      purge_all:
+        description: "Purge all JS/CSS/HTML files (full cache reset)"
+        required: false
+        default: "true"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get files to purge
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            files=$(find js css -type f \( -name "*.js" -o -name "*.css" \) && find . -maxdepth 1 -name "*.html" | sed 's|^\./||')
+          else
+            files=$(git diff --name-only HEAD~1 HEAD -- 'js/**' 'css/**' '*.html')
+          fi
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$files" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Purge jsDelivr cache
+        if: steps.changed.outputs.files != ''
+        env:
+          CHANGED_FILES: ${{ steps.changed.outputs.files }}
+        run: |
+          REPO="dev-forwwward/fwd-studio-website"
+          BRANCH="main"
+
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+            url="https://purge.jsdelivr.net/gh/${REPO}@${BRANCH}/${file}"
+            echo -n "Purging ${file} ... "
+            curl -s "$url"
+            echo ""
+          done <<< "$CHANGED_FILES"
