@@ -5,7 +5,7 @@ export function swiperInit() {
     // Init all Swipers
     const swipersList = document.querySelectorAll('.swiper');
 
-    if (swipersList.length > 0 && window.innerWidth <= 991) {
+    if (swipersList.length > 0) {
 
         swipersList.forEach((swiper) => {
             const swiperEl = new Swiper(swiper, {
