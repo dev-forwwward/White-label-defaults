@@ -8,6 +8,12 @@ export function swiperInit() {
     if (swipersList.length > 0) {
 
         swipersList.forEach((swiper) => {
+
+            const swiperPagination = swiper.closest('.swiper-pagination');
+            const swiperNext = swiper.closest('.swiper-button-next');
+            const swiperPrevious = swiper.closest('.swiper-button-prev');
+
+
             const swiperEl = new Swiper(swiper, {
                 slidesPerView: 1.25,
                 spaceBetween: 16,
@@ -28,6 +34,13 @@ export function swiperInit() {
                     768: {
                         slidesPerView: 3.25,
                     }
+                },
+                pagination: {
+                    el: swiperPagination,
+                },
+                navigation: {
+                    nextEl: swiperNext,
+                    prevEl: swiperPrevious,
                 },
             });
         });
