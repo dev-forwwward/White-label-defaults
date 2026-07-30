@@ -1,0 +1,44 @@
+name: Update README Features
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "js/**"
+      - "css/**"
+  workflow_dispatch: {}
+
+# Avoid two runs racing to commit against the same ref.
+concurrency:
+  group: update-readme-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    # Skip commits made by this job itself, just in case.
+    if: "!contains(github.event.head_commit.message, '[skip readme]')"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Regenerate README features section
+        run: node scripts/generate-readme.js
+
+      - name: Commit changes if any
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          if git diff --quiet -- README.md; then
+            echo "README.md unchanged, nothing to commit."
+            exit 0
+          fi
+
+          git add README.md
+          git commit -m "docs: auto-update README features [skip readme]"
+          git push origin HEAD:main
