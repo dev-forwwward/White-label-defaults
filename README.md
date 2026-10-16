@@ -51,6 +51,9 @@ _Entire file is commented out — not currently active or wired into `script-loa
 - This ensures Lenis's smooth scroll animation updates on each GSAP tick
 - Disable lag smoothing in GSAP to prevent any delay in scroll animations
 - FANCYBOX INIT
+- PRELOADER
+- MOUSE FOLLOWER
+- Snap to the pointer on entry so it doesn't glide in from its last position
 - Copy link share
 
 ### [`js/menu.js`](js/menu.js) — `navBarMenu()`
