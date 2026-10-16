@@ -30,16 +30,40 @@ export function mainInit() {
         });
     }
 
-
+    // PRELOADER
     gsap.to('.preloader', {
         opacity: 0,
         delay: .1,
         duration: .5,
         ease: "power2.out",
-        onComplete: ()=> {
+        onComplete: () => {
             document.querySelector('.preloader').remove();
         }
     });
+
+    // MOUSE FOLLOWER
+    // Follower is position: fixed, so it tracks clientX/Y directly (no rect math).
+    // Visibility is handled in CSS via :has(.mouse-follower-card:hover).
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+        document.querySelectorAll('.mouse-follower-container').forEach(container => {
+            const follower = container.querySelector('.mouse-follower');
+            if (!follower) return;
+
+            gsap.set(follower, { xPercent: -50, yPercent: -50 });
+            const xTo = gsap.quickTo(follower, 'x', { duration: 0.4, ease: 'power2.out' });
+            const yTo = gsap.quickTo(follower, 'y', { duration: 0.4, ease: 'power2.out' });
+
+            // Snap to the pointer on entry so it doesn't glide in from its last position
+            container.addEventListener('pointerenter', (e) => {
+                xTo(e.clientX, e.clientX);
+                yTo(e.clientY, e.clientY);
+            });
+            container.addEventListener('pointermove', (e) => {
+                xTo(e.clientX);
+                yTo(e.clientY);
+            });
+        });
+    }
 
     // Copy link share
     const copyShare = document.querySelectorAll(".copy-to-clipboard");
