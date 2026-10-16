@@ -23,6 +23,6 @@
     left: 0;
 }
 
-.mouse-follower-container:has(.mouse-follower-card:hover) .mouse-follower {
+body:has(.mouse-follower-card:hover) .mouse-follower {
     opacity: 1;
 }
