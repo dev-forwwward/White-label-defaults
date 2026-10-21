@@ -57,15 +57,18 @@ export function mainInit() {
     }
 
     // PRELOADER
-    gsap.to('.preloader', {
-        opacity: 0,
-        delay: .1,
-        duration: .5,
-        ease: "power2.out",
-        onComplete: () => {
-            document.querySelector('.preloader').remove();
-        }
-    });
+    const preloader = document.querySelector('.preloader');
+    if (preloader) {
+        gsap.to('.preloader', {
+            opacity: 0,
+            delay: .1,
+            duration: .5,
+            ease: "power2.out",
+            onComplete: () => {
+                document.querySelector('.preloader').remove();
+            }
+        });
+    }
 
     // MOUSE FOLLOWER
     // One global .mouse-follower (in Global Styles), position: fixed, so it tracks clientX/Y directly.
